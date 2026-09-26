@@ -414,3 +414,18 @@ FROM (SELECT  CASE WHEN income < 20000 THEN 'Low Salary'
     
         VALUES('Low Salary'),('Average Salary'),('High Salary')) Q
 GROUP BY category  ;
+
+
+----------------------------------------------------------
+--- 37* Employees Whose Manager Left the Company
+
+with q as (select emp.employee_id 
+                , mng.employee_id mng_id
+            from Employees emp
+            left join Employees mng on mng.employee_id=emp.manager_id 
+            where emp.salary <30000 and emp.manager_id is not null )
+
+select employee_id 
+from q
+where mng_id  is null
+order by 1;

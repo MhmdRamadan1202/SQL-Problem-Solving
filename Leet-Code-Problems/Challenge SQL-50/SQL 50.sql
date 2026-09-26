@@ -385,4 +385,32 @@ LEFT JOIN LastChangedPrice USING (product_id);
 
 
 ----------------------------------------------------------
---- 35* 
+--- 35* Last Person to Fit in the Bus
+
+SELECT person_name
+FROM(
+        SELECT person_id ,
+                person_name ,
+                weight ,
+                turn ,
+                SUM(weight) OVER(ORDER BY turn) total_weight
+        FROM Queue) Q
+WHERE Q.total_weight <= 1000
+ORDER BY turn DESC
+LIMIT 1;
+
+
+----------------------------------------------------------
+--- 36* Count Salary Categories
+
+SELECT category,
+      COUNT (category)-1 accounts_count 
+FROM (SELECT  CASE WHEN income < 20000 THEN 'Low Salary'
+                  WHEN income BETWEEN 20000 AND 50000 THEN 'Average Salary'
+                  WHEN income > 50000 THEN 'High Salary' END category
+       FROM Accounts
+       
+       UNION ALL
+    
+        VALUES('Low Salary'),('Average Salary'),('High Salary')) Q
+GROUP BY category  ;

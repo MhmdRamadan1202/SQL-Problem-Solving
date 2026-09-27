@@ -413,7 +413,7 @@ FROM (SELECT  CASE WHEN income < 20000 THEN 'Low Salary'
        UNION ALL
     
         VALUES('Low Salary'),('Average Salary'),('High Salary')) Q
-GROUP BY category  ;
+GROUP BY category  ; 
 
 
 ----------------------------------------------------------
@@ -429,3 +429,176 @@ select employee_id
 from q
 where mng_id  is null
 order by 1;
+
+----------------------------------------------------------
+--- 38* Exchange Seats
+
+SELECT CASE WHEN ID % 2=1 AND ID+1 IN (SELECT ID FROM SEAT) THEN ID+1 
+            WHEN ID % 2=0 THEN ID-1 
+            ELSE ID END ID,
+       STUDENT 
+FROM SEAT
+ORDER BY 1 ASC;
+
+
+----------------------------------------------------------
+--- 39* Movie Rating
+
+(SELECT U.name AS results
+FROM MovieRating R
+JOIN Users  U on U.user_id=R.user_id
+GROUP BY name
+ORDER BY COUNT(*) DESC, name
+LIMIT 1)
+
+UNION ALL
+
+(SELECT title AS results
+FROM MovieRating JOIN Movies USING(movie_id)
+WHERE EXTRACT(YEAR_MONTH FROM created_at) = 202002
+GROUP BY title
+ORDER BY AVG(rating) DESC, title
+LIMIT 1);
+
+----------------------------------------------------------
+--- 40* Restaurant Growth
+
+SELECT visited_on, amount, average_amount
+FROM (
+    SELECT
+        visited_on,
+        SUM(amount) OVER (
+            ORDER BY visited_on
+            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ) AS amount,
+        ROUND(
+            AVG(amount) OVER (
+                ORDER BY visited_on
+                ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+            ), 2
+        ) AS average_amount,
+        ROW_NUMBER() OVER (ORDER BY visited_on) AS rn
+    FROM (
+        SELECT visited_on, SUM(amount) AS amount
+        FROM Customer
+        GROUP BY visited_on
+    ) AS daily_totals
+) AS windowed
+WHERE rn >= 7
+ORDER BY visited_on;
+
+
+----------------------------------------------------------
+--- 41* Friend Requests II: Who Has the Most Friends
+
+SELECT TOP 1
+        id,
+        SUM(num) num 
+FROM (SELECT   requester_id id,
+                COUNT(requester_id) num 
+        FROM RequestAccepted
+        GROUP BY requester_id
+        UNION ALL
+        SELECT   accepter_id  id,
+                COUNT(accepter_id ) num 
+        FROM RequestAccepted
+        GROUP BY accepter_id )Q
+GROUP BY id   
+ORDER BY num DESC;
+
+
+----------------------------------------------------------
+--- 42* Investments in 2016
+
+SELECT ROUND(SUM(tiv_2016),2)tiv_2016
+FROM (       
+        SELECT pid ,
+            tiv_2015,
+            tiv_2016 ,
+            lat,
+            lon,
+            count(tiv_2015)over(partition by tiv_2015) tiv_2015_count,
+            count(concat(lat,',',lon))over(partition by lat,lon) lat_lon_count
+        FROM Insurance) T
+WHERE tiv_2015_count >1
+      AND lat_lon_count =1;
+
+----------------------------------------------------------
+--- 43* Department Top Three Salaries
+
+SELECT Department,
+        Employee,
+        SALARY
+FROM (SELECT D.NAME Department ,
+            E.NAME Employee ,
+            E.SALARY,
+            DENSE_RANK()OVER(PARTITION BY D.NAME ORDER BY E.SALARY DESC) RNK
+        FROM Employee E
+        JOIN Department D ON E.departmentId =D.ID) T
+WHERE RNK <=3 ; 
+
+----------------------------------------------------------
+--- 44* Fix Names in a Table
+
+SELECT USER_ID,
+       CONCAT(UPPER(SUBSTRING(NAME,1,1))
+                              ,LOWER(SUBSTRING(NAME,2,LENGTH(NAME)))) NAME
+FROM USERS
+ORDER BY USER_ID;
+
+----------------------------------------------------------
+--- 45* Patients With a Condition
+
+SELECT *
+FROM Patients
+WHERE conditions LIKE '% DIAB1%' OR conditions LIKE 'DIAB1%';
+
+----------------------------------------------------------
+--- 46* Delete Duplicate Emails
+
+delete p1 
+from person p1
+JOIN person p2 ON p1.email=p2.email
+where p1.id>p2.id;
+
+
+----------------------------------------------------------
+--- 47* Second Highest Salary
+
+select max(salary) as SecondHighestSalary  
+from Employee
+where salary <(select max(salary) 
+                from Employee) ;
+
+----------------------------------------------------------
+--- 48* Group Sold Products By The Date
+
+select   sell_date
+        ,count( DISTINCT product ) as num_sold 
+        ,GROUP_CONCAT( DISTINCT product order by product ASC separator ',' ) as products
+FROM Activities 
+GROUP BY sell_date 
+order by sell_date ASC;
+
+----------------------------------------------------------
+--- 49* List the Products Ordered in a Period
+
+SELECT P.product_name,
+       SUM(O.UNIT)unit    
+FROM PRODUCTS P
+JOIN ORDERS O ON P.product_id=O.product_id  
+where YEAR(o.order_date)='2020' AND MONTH(o.order_date)='02'
+group by product_name 
+HAVING SUM(o.unit)>=100;
+
+----------------------------------------------------------
+--- 50* Find Users With Valid E-Mails
+
+SELECT USER_ID,
+       NAME,
+       MAIL
+FROM USERS
+WHERE SUBSTRING(MAIL, CHARINDEX('@', MAIL), 14) 
+                      COLLATE Latin1_General_CS_AS = '@leetcode.com'
+  AND SUBSTRING(MAIL, 1, 1) LIKE '[A-Za-z]'
+  AND SUBSTRING(MAIL, 1, CHARINDEX('@', MAIL) - 1) NOT LIKE '%[^A-Za-z0-9_.-]%';
